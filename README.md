@@ -2,11 +2,9 @@
 
 This repository contains the resources and source code for a machine learning assignment aimed at predicting car prices. The project leverages AWS services, including Lambda and API Gateway, and follows MLOps practices to automate and monitor all steps of machine learning system construction.
 
-# **Repository Structure**
+## **Repository Structure**
 
-```python
-pythonCopy code
-.
+```bash
 ├── README.md
 ├── data
 │   └── dataset.npz              # Raw and preprocessed data
@@ -45,7 +43,7 @@ pythonCopy code
    - **`model.py`**: Initial model training python code provided by the instructor.
 - **`/notebooks`**: Jupyter notebook that documents the exploratory data analysis (EDA), data visualization, data preprocessing, model development with refinements.
 
-# Local Development Setup
+## Local Development Setup
 
 For this assignment, I set up the local development environment on a Mac M1 Pro using Miniconda. I followed these specific steps to ensure that all necessary Python packages and Jupyter functionalities were available:
 
@@ -97,7 +95,7 @@ For this assignment, I set up the local development environment on a Mac M1 Pro 
 
    This command starts the Jupyter Notebook server locally in web browser, from where we can create and manage your notebooks.
 
-## **Additional Requirements**
+### **Additional Requirements**
 
 1. **Docker Installation**:
     - Docker is installed to handle containerization, necessary for deploying functions and services.
@@ -236,7 +234,7 @@ To evaluate the performance of the trained model, the following metrics are calc
 
 
 
-# **Step 2: Deployment of AWS Lambda Function for Car Price Prediction**
+# **Step 2: Deployment on AWS Lambda**
 
 This section details the deployment process of an AWS Lambda function designed to predict car prices using a trained model stored on AWS S3. The function processes input data in JSON format, applies necessary preprocessing, and outputs the predicted selling price.
 
@@ -253,34 +251,26 @@ This section details the deployment process of an AWS Lambda function designed t
 
 - **Authenticate Docker to AWS ECR**:
 
-    ```css
-    cssCopy code
+    ```bash
     aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 637423276370.dkr.ecr.ap-south-1.amazonaws.com
-    
     ```
 
 - **Create a Repository in AWS ECR**:
 
-    ```css
-    cssCopy code
+    ```bash
     aws ecr create-repository --repository-name lambda-function-repo --region ap-south-1
-    
     ```
 
 - **Build and Tag the Docker Image**:
 
-    ```jsx
-    javascriptCopy code
+    ```bash
     docker tag lambda-function-image:latest 637423276370.dkr.ecr.ap-south-1.amazonaws.com/lambda-function-repo:latest
-    
     ```
 
 - **Push the Docker Image to ECR**:
 
     ```bash
-    bashCopy code
     docker push 637423276370.dkr.ecr.ap-south-1.amazonaws.com/lambda-function-repo:latest
-    
     ```
 
 
@@ -288,8 +278,7 @@ This section details the deployment process of an AWS Lambda function designed t
 
 - **Create Lambda Function**:
 
-    ```lua
-    luaCopy code
+    ```bash
     aws lambda create-function --function-name model-endpoint-v2 \
         --package-type Image \
         --code ImageUri=637423276370.dkr.ecr.ap-south-1.amazonaws.com/lambda-function-repo:latest \
@@ -298,7 +287,6 @@ This section details the deployment process of an AWS Lambda function designed t
         --architectures arm64 \
         --timeout 120 \
         --memory-size 1024
-    
     ```
 
 
@@ -307,12 +295,10 @@ This section details the deployment process of an AWS Lambda function designed t
 - **Invoke the Lambda Function with Sample Data**:
 
     ```bash
-    bashCopy code
     aws lambda invoke \
         --function-name model-endpoint-v2 \
         --payload '{"body": "{\"Kilometeres\": 45000, \"Doors\": 2, \"Automatic\": 0, \"HorsePower\": 110, \"MetallicCol\": 1, \"CC\": 1500, \"Wt\": 950, \"Age\": 2, \"Fuel_Type\": \"Diesel\"}"}' \
         response.json
-    
     ```
 
 
@@ -320,10 +306,8 @@ This section details the deployment process of an AWS Lambda function designed t
 
 - **Set Reserved Concurrency**:
 
-    ```css
-    cssCopy code
+    ```bash
     aws lambda put-function-concurrency --function-name model-endpoint-v2 --reserved-concurrent-executions 100
-    
     ```
 
 
@@ -348,15 +332,17 @@ To effectively monitor and observe the AWS Lambda function's performance and beh
 
 AWS Lambda automatically monitors functions, reporting metrics through Amazon CloudWatch. We just have to ensure **logging is enabled in the Lambda function’s IAM role**. This role needs permission to write logs to CloudWatch. The necessary policy (**`AWSLambdaBasicExecutionRole`**) includes permissions for logs creation.
 
-![Untitled](https://prod-files-secure.s3.us-west-2.amazonaws.com/2f7830c3-173b-41cd-aa45-25fca7558acb/1c04c73e-74cf-4599-a6a6-36369b7187f1/Untitled.png)
+![model-endpoint-lambda-iam](./images/model-endpoint-lambda-iam.png)
 
-![Untitled](https://prod-files-secure.s3.us-west-2.amazonaws.com/2f7830c3-173b-41cd-aa45-25fca7558acb/d8b5a216-2123-4208-b5f7-fae373031882/Untitled.png)
+![Untitled](./images/model-endpoint-lambda-iam-2.png)
 
 - The **`print`** statements in Lambda python function will direct these logs to CloudWatch under the **`/aws/lambda/model-endpoint-v2`** log group.
 
-![Untitled](https://prod-files-secure.s3.us-west-2.amazonaws.com/2f7830c3-173b-41cd-aa45-25fca7558acb/f849a7ac-b3e5-4407-a756-70ab86d7a5db/Untitled.png)
+![Untitled](./images/cloudwatch-log-streams.png)
 
-![Untitled](https://prod-files-secure.s3.us-west-2.amazonaws.com/2f7830c3-173b-41cd-aa45-25fca7558acb/42a948c8-b161-4173-8209-96065ee0e0ba/Untitled.png)
+
+![Untitled](./images/cloud-watch-metrics.png)
+
 
 ### **2. Monitor Execution Time and Invocation Frequency**
 
@@ -366,7 +352,7 @@ AWS Lambda automatically monitors functions, reporting metrics through Amazon Cl
 
 These metrics are found in the CloudWatch console under the **Metrics** section.
 
-![Untitled](https://prod-files-secure.s3.us-west-2.amazonaws.com/2f7830c3-173b-41cd-aa45-25fca7558acb/4dc54515-1733-417c-a018-0b7e48e68e21/Untitled.png)
+
 
 ### **3. Monitor Model Inference Errors**
 
@@ -408,3 +394,5 @@ These metrics are found in the CloudWatch console under the **Metrics** section.
     - Go to the CloudWatch console → Alarms → Create alarm.
     - Select the metric (e.g., **`Duration`**, **`Errors`**), specify the threshold (e.g., Duration > 3000 ms), and set the period over which this is measured.
     - Configure actions to notify you via SNS (Simple Notification Service) when the alarm state is triggered.
+
+![Untitled](./images/cloudwatch-alerts.png)
