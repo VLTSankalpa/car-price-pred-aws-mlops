@@ -7,8 +7,3 @@
 # Ignore Mac OS filesystem metadata
 .DS_Store
 
-# Ignore Python virtual environments
-**/env/
-**/venv/
-**/python/
-lambda-ct-pipeline/venv/*
