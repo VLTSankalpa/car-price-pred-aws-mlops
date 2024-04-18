@@ -11,6 +11,7 @@ from io import BytesIO
 # Initialize clients
 s3_client = boto3.client('s3')
 
+
 def lambda_handler(event, context):
     # Get bucket and file details from the event
     bucket = event['Records'][0]['s3']['bucket']['name']

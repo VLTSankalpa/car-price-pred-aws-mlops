@@ -1,8 +1,8 @@
 # **Car Price Prediction - MLOps on AWS**
 
-This repository contains the resources and source code for a machine learning project aimed at predicting car prices. The project leverages AWS services, including Lambda and API Gateway, and follows MLOps practices to automate and monitor all steps of machine learning system construction.
+This repository contains the resources and source code for a machine learning assignment aimed at predicting car prices. The project leverages AWS services, including Lambda and API Gateway, and follows MLOps practices to automate and monitor all steps of machine learning system construction.
 
-## **Repository Structure**
+# **Repository Structure**
 
 ```python
 pythonCopy code
@@ -26,7 +26,7 @@ pythonCopy code
 │   ├── scaler.pkl                  # Scaler object for numerical data normalization
 │   └── train.csv                   # Training dataset
 └── notebooks
-    └── development-notebook.ipynb  # Jupyter notebook containing EDA and model deployment code
+    └── development-notebook.ipynb  # Jupyter notebook containing EDA, data visualization, data preprocessing, and model development
 
 ```
 
@@ -37,15 +37,15 @@ pythonCopy code
 - **`/lambda-ct-pipeline`**: Holds the AWS Lambda function for continuous training of the machine learning model.
 - **`/lambda-model-endpoint`**:
    - **`Dockerfile`**: Defines the Docker container used to deploy the Lambda function.
-   - **`main.py`**: Entry script that sets up the Lambda function.
+   - **`test.py`**: Unit test for the model endpoint Lambda function.
    - **`model_endpoint_lambda_function.py`**: Implements the Lambda function to serve the model predictions.
 - **`/model`**: Contains all machine learning models and their corresponding encoders, along with the training dataset.
-   - **`finalized_linear_model.pkl`**: The serialized final model ready for predictions.
-   - **`label_encoder.pkl`**, **`onehot_encoder.pkl`**, **`scaler.pkl`**: Serialization of preprocessing tools.
-   - **`model.py`**: Python script for training and saving models.
-- **`/notebooks`**: Jupyter notebook that documents the exploratory data analysis (EDA) and the model deployment steps.
+   - **`finalized_linear_model.pkl`**: The serialized final linear regression model ready for predictions.
+   - **`label_encoder.pkl`**, **`onehot_encoder.pkl`**, **`scaler.pkl`**: Serialization of preprocessing encoders.
+   - **`model.py`**: Initial model training python code provided by the instructor.
+- **`/notebooks`**: Jupyter notebook that documents the exploratory data analysis (EDA), data visualization, data preprocessing, model development with refinements.
 
-## Local Development Setup
+# Local Development Setup
 
 For this assignment, I set up the local development environment on a Mac M1 Pro using Miniconda. I followed these specific steps to ensure that all necessary Python packages and Jupyter functionalities were available:
 
@@ -97,11 +97,36 @@ For this assignment, I set up the local development environment on a Mac M1 Pro 
 
    This command starts the Jupyter Notebook server locally in web browser, from where we can create and manage your notebooks.
 
-# **Step 1: Exploratory Data Analysis (EDA)**
+## **Additional Requirements**
 
-In this phase, I performed Exploratory Data Analysis (EDA) on the Car Price Prediction dataset using a suite of standard templates that I have developed. This practice is standard whenever I approach a data science problem. The initial investigation and cleaning process are crucial for refining the provided Python script. This involves adding the necessary preprocessing steps required for creating an accurate predictive model. The goal of this phase is to prepare a clean and well-understood dataset, ensuring that it is ready for subsequent feature engineering and model development steps.
+1. **Docker Installation**:
+    - Docker is installed to handle containerization, necessary for deploying functions and services.
+    - Visit Docker's official site for installation instructions.
+2. **AWS CLI Installation**:
+    - The AWS Command Line Interface (CLI) is installed to interact with AWS services directly from the terminal.
+    - Detailed installation guides are available on the [AWS documentation page](https://aws.amazon.com/cli/).
+3. **AWS CLI Configuration**:
+    - AWS CLI is configured with user credentials to authenticate and interact with AWS resources.
+    - Run **`aws configure`** to set up AWS access key ID, secret access key, region, and output format.
+4. **Python Libraries Installation**:
+    - Essential Python libraries are required for data handling, statistical analysis, and machine learning operations.
+    - To install these libraries, use the **`requirements.txt`** file provided in the repository.
 
-## EDA Objectives
+        ```bash
+        pip install -r requirements.txt
+        ```
+
+# **Step 1: Model Preparation for Deployment**
+
+## **Exploratory Data Analysis (EDA)**
+
+In this phase, I performed Exploratory Data Analysis (EDA) on the Car Price Prediction dataset using a suite of standard templates that I have developed. 
+This practice is standard whenever I approach a data science problem. 
+The initial investigation and cleaning process are crucial for refining the provided Python script. 
+This involves adding the necessary preprocessing steps required for creating an accurate predictive model. 
+The goal of this phase is to prepare a clean and well-understood dataset, ensuring that it is ready for subsequent feature engineering and model development steps.
+
+### EDA Objectives
 The following key tasks are executed to achieve a comprehensive understanding and preparation of the dataset:
 
 - **List of Columns**: Identify all columns in the dataset to understand the features available.
@@ -112,7 +137,7 @@ The following key tasks are executed to achieve a comprehensive understanding an
 - **Handling Missing Values**: Identify and address any missing data in the dataset.
 - **Summary Statistics**: Generate summary statistics of numeric columns to gain insights into the distribution and central tendencies of the data.
 
-## Insights for EDA
+### Insights for EDA
 
 **Categorical Variables**
 
@@ -163,12 +188,121 @@ Initial observations from Kernel Density Estimate (KDE) plots include:
 5. **SellingPrice**: The SellingPrice is right-skewed, suggesting that most cars are clustered around a lower price range with fewer high-priced cars.
 6. **Age**: The car age distribution is also right-skewed, indicating that there are more newer cars and fewer older cars.
 
-# **Step 2: Machine Learning Model Development**
+## Data Preprocessing
 
-## **Training Data Preparing**
+### Normalization
+To handle potential scale discrepancies among these numerical features, we use the MinMaxScaler from scikit-learn. This scaler transforms each feature to a range between 0 and 1, maintaining the distribution but aligning the scales. This is crucial as it prevents attributes with larger ranges from dominating those with smaller ranges, which is important for many machine learning algorithms.
+
+### **Label Encoding**
+
+For the **`Doors`** feature, which is ordinal, we apply label encoding. This approach converts the categorical labels into a single integer column, preserving the order, which is appropriate for ordinal data.
+
+### **One-Hot Encoding**
+
+The **`Fuel_Type`** feature is treated with one-hot encoding, which is essential for nominal categorical data. This method transforms each categorical value into a new binary column, ensuring that the model interprets these attributes correctly without any implicit ordering.
+
+### **Feature Transformation**
+
+After encoding, we handle the transformation from sparse to dense formats. Many machine learning algorithms require a dense matrix format, so we convert the sparse matrix obtained from one-hot encoding into a dense format. This is performed using the **`.toarray()`** method, which is necessary to integrate these features into the main DataFrame seamlessly.
+
+### **Integration with Original DataFrame**
+
+The newly created dense matrix columns are named according to the unique values in **`Fuel_Type`** and then concatenated back to the original DataFrame. Columns derived from **`Fuel_Type`** are added, and the original **`Fuel_Type`** column is dropped to avoid redundancy.
+
+### **Final Adjustments**
+
+For binary categorical features like **`Automatic`** and **`MetallicCol`**, which are already in a binary format, we explicitly cast them to a 'category' type to ensure consistency in data types across the DataFrame. This step is important for some types of statistical analysis and modeling in Python.
+
+### **Training Data Preparing**
 
 This code performs the following operations:
 
 - [ ] Splits the data into feature (**`X`**) and label (**`y`**) arrays.
 - [ ] Uses **`train_test_split`** twice to create a train set (60% of the data), a validation set (20%), and a test set (20%).
 - [ ] Saves the training, validation, and test sets to an **`.npz`** file, which can then be loaded for training.
+### **Model Training**
+
+Improvement have done to the provided linear regression model is codes for training and evaluating the model. The model is trained on the training set and evaluated on the validation set.
+
+### **Model Evaluation**
+
+To evaluate the performance of the trained model, the following metrics are calculated using the validation set:
+
+- **Mean Squared Error (MSE)**: Represents the average of the squares of the errors—i.e., the average squared difference between the estimated values and the actual value.
+- **R-Squared (R²)**: Provides an indication of goodness of fit and therefore a measure of how well unseen samples are likely to be predicted by the model.
+- **Mean Absolute Error (MAE)**: Measures the average magnitude of the errors in a set of predictions, without considering their direction.
+- **Mean Absolute Percentage Error (MAPE)**: Measures the accuracy as a percentage, and is commonly used to forecast error in predictive modeling.
+- **Root Mean Squared Error (RMSE)**: The square root of the mean of the squared errors; RMSE is a good measure of how accurately the model predicts the response.
+
+
+
+
+
+# Monitoring and Observability
+
+To effectively monitor and observe the AWS Lambda function's performance and behavior, following steps of integrating it with AWS CloudWatch for metrics, logs, and alerts is crucial. This setup provides visibility into the function's operation, helps identify performance bottlenecks, and alerts to potential issues.
+
+### **1. Enable CloudWatch Logs for Lambda Function**
+
+AWS Lambda automatically monitors functions, reporting metrics through Amazon CloudWatch. We just have to ensure **logging is enabled in the Lambda function’s IAM role**. This role needs permission to write logs to CloudWatch. The necessary policy (**`AWSLambdaBasicExecutionRole`**) includes permissions for logs creation.
+
+![Untitled](https://prod-files-secure.s3.us-west-2.amazonaws.com/2f7830c3-173b-41cd-aa45-25fca7558acb/1c04c73e-74cf-4599-a6a6-36369b7187f1/Untitled.png)
+
+![Untitled](https://prod-files-secure.s3.us-west-2.amazonaws.com/2f7830c3-173b-41cd-aa45-25fca7558acb/d8b5a216-2123-4208-b5f7-fae373031882/Untitled.png)
+
+- The **`print`** statements in Lambda python function will direct these logs to CloudWatch under the **`/aws/lambda/model-endpoint-v2`** log group.
+
+![Untitled](https://prod-files-secure.s3.us-west-2.amazonaws.com/2f7830c3-173b-41cd-aa45-25fca7558acb/f849a7ac-b3e5-4407-a756-70ab86d7a5db/Untitled.png)
+
+![Untitled](https://prod-files-secure.s3.us-west-2.amazonaws.com/2f7830c3-173b-41cd-aa45-25fca7558acb/42a948c8-b161-4173-8209-96065ee0e0ba/Untitled.png)
+
+### **2. Monitor Execution Time and Invocation Frequency**
+
+- **CloudWatch Metrics**: AWS Lambda automatically sends these metrics to CloudWatch:
+    - **`Duration`**: Measures the elapsed runtime of your Lambda function in milliseconds.
+    - **`Invocations`**: Counts each time a function is invoked in response to an event or invocation API call.
+
+These metrics are found in the CloudWatch console under the **Metrics** section.
+
+![Untitled](https://prod-files-secure.s3.us-west-2.amazonaws.com/2f7830c3-173b-41cd-aa45-25fca7558acb/4dc54515-1733-417c-a018-0b7e48e68e21/Untitled.png)
+
+### **3. Monitor Model Inference Errors**
+
+- **Custom Metrics**: If your model throws specific errors (e.g., inference errors), you might want to log these explicitly and create custom CloudWatch metrics using these logs.
+- **Implement Error Handling in Lambda Code**:
+
+    ```python
+    import logging
+    import boto3
+    
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    cloudwatch = boto3.client('cloudwatch')
+    
+    def lambda_handler(event, context):
+        try:
+            # Your model inference code
+        except Exception as e:
+            logger.error("Model inference failed: %s", str(e))
+            cloudwatch.put_metric_data(
+                MetricData=[
+                    {
+                        'MetricName': 'ModelInferenceErrors',
+                        'Dimensions': [
+                            {'Name': 'FunctionName', 'Value': context.function_name}
+                        ],
+                        'Unit': 'Count',
+                        'Value': 1
+                    },
+                ],
+                Namespace='MyApp/Lambda'
+            )
+            raise
+    ```
+
+### **4. Set Up CloudWatch Alerts**
+
+- **Create CloudWatch Alarms**: Use these to get notified about issues like high latency or increasing error rates.
+    - Go to the CloudWatch console → Alarms → Create alarm.
+    - Select the metric (e.g., **`Duration`**, **`Errors`**), specify the threshold (e.g., Duration > 3000 ms), and set the period over which this is measured.
+    - Configure actions to notify you via SNS (Simple Notification Service) when the alarm state is triggered.

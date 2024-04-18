@@ -3,7 +3,7 @@ import numpy as np
 from sklearn.linear_model import LinearRegression
 
 # Read the dataset from a CSV file
-df = pd.read_csv("./train.csv")
+df = pd.read_csv("../data/train.csv")
 
 print(df.columns)
 
