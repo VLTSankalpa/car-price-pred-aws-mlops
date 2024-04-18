@@ -236,9 +236,111 @@ To evaluate the performance of the trained model, the following metrics are calc
 
 
 
+# **Step 2: Deployment of AWS Lambda Function for Car Price Prediction**
+
+This section details the deployment process of an AWS Lambda function designed to predict car prices using a trained model stored on AWS S3. The function processes input data in JSON format, applies necessary preprocessing, and outputs the predicted selling price.
+
+## **Architecture Overview**
+
+- **AWS Lambda**: Hosts the Python-based prediction function.
+- **Amazon S3**: Stores serialized machine learning models and preprocessors.
+- **Amazon ECR (Elastic Container Registry)**: Stores Docker images configured to run the Lambda function.
+- **AWS IAM**: Manages permissions for Lambda function to access AWS resources.
+
+## **Deployment Steps**
+
+### **1. Prepare Docker Environment**
+
+- **Authenticate Docker to AWS ECR**:
+
+    ```css
+    cssCopy code
+    aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 637423276370.dkr.ecr.ap-south-1.amazonaws.com
+    
+    ```
+
+- **Create a Repository in AWS ECR**:
+
+    ```css
+    cssCopy code
+    aws ecr create-repository --repository-name lambda-function-repo --region ap-south-1
+    
+    ```
+
+- **Build and Tag the Docker Image**:
+
+    ```jsx
+    javascriptCopy code
+    docker tag lambda-function-image:latest 637423276370.dkr.ecr.ap-south-1.amazonaws.com/lambda-function-repo:latest
+    
+    ```
+
+- **Push the Docker Image to ECR**:
+
+    ```bash
+    bashCopy code
+    docker push 637423276370.dkr.ecr.ap-south-1.amazonaws.com/lambda-function-repo:latest
+    
+    ```
 
 
-# Monitoring and Observability
+### **2. Deploy Lambda Function**
+
+- **Create Lambda Function**:
+
+    ```lua
+    luaCopy code
+    aws lambda create-function --function-name model-endpoint-v2 \
+        --package-type Image \
+        --code ImageUri=637423276370.dkr.ecr.ap-south-1.amazonaws.com/lambda-function-repo:latest \
+        --role arn:aws:iam::637423276370:role/model-endpoint-lambda \
+        --region ap-south-1 \
+        --architectures arm64 \
+        --timeout 120 \
+        --memory-size 1024
+    
+    ```
+
+
+### **3. Test Lambda Function**
+
+- **Invoke the Lambda Function with Sample Data**:
+
+    ```bash
+    bashCopy code
+    aws lambda invoke \
+        --function-name model-endpoint-v2 \
+        --payload '{"body": "{\"Kilometeres\": 45000, \"Doors\": 2, \"Automatic\": 0, \"HorsePower\": 110, \"MetallicCol\": 1, \"CC\": 1500, \"Wt\": 950, \"Age\": 2, \"Fuel_Type\": \"Diesel\"}"}' \
+        response.json
+    
+    ```
+
+
+### **4. Configure Concurrency for Scalability**
+
+- **Set Reserved Concurrency**:
+
+    ```css
+    cssCopy code
+    aws lambda put-function-concurrency --function-name model-endpoint-v2 --reserved-concurrent-executions 100
+    
+    ```
+
+
+This setup ensures that the Lambda function can handle concurrent requests efficiently, maintaining performance during peak times.
+
+## **Function Logic and Operations**
+
+- **Read Model and Encoders**: The Lambda function begins by loading the serialized model and preprocessors from an S3 bucket.
+- **Data Preprocessing**: It then preprocesses incoming JSON data using the same methods (scaling and encoding) used during model training.
+- **Prediction**: The model makes predictions based on the preprocessed data.
+- **Response**: The function packages the predicted selling price into a JSON response.
+
+## **Testing the Function Locally**
+
+- A Python script simulates the environment and tests the Lambda function locally, ensuring the function operates as expected before deployment.
+
+# Step 3: Monitoring and Observability
 
 To effectively monitor and observe the AWS Lambda function's performance and behavior, following steps of integrating it with AWS CloudWatch for metrics, logs, and alerts is crucial. This setup provides visibility into the function's operation, helps identify performance bottlenecks, and alerts to potential issues.
 
