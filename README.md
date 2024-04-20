@@ -333,7 +333,7 @@ This section details the deployment process of an AWS Lambda function designed t
         --timeout 120 \
         --memory-size 1024
     ```
-
+![lambda-function-console](./images/lambda-function-console.png)
 
 ### **3. Test Lambda Function**
 
@@ -345,7 +345,7 @@ This section details the deployment process of an AWS Lambda function designed t
         --payload '{"body": "{\"Kilometeres\": 45000, \"Doors\": 2, \"Automatic\": 0, \"HorsePower\": 110, \"MetallicCol\": 1, \"CC\": 1500, \"Wt\": 950, \"Age\": 2, \"Fuel_Type\": \"Diesel\"}"}' \
         response.json
     ```
-
+![lambda-function-console](./images/lambda-function-testing.png)
 
 ### **4. Configure Concurrency for Scalability**
 
@@ -437,3 +437,106 @@ These metrics are found in the CloudWatch console under the **Metrics** section.
     - Configure actions to notify you via SNS (Simple Notification Service) when the alarm state is triggered.
 
 ![cloudwatch-alerts](./images/cloudwatch-alerts.png)
+
+# **Step 3: API Gateway and Security**
+
+In this step, I have set up the AWS API Gateway to accept JSON data, pass it to my AWS Lambda function for predictions, return the prediction results as JSON in the API response, and secure it using API keys. Below, I have documented the manual configuration steps step by step.
+
+### **Step 1: Create API Gateway**
+
+1. **Log into the AWS Management Console** and navigate to the **API Gateway service**.
+2. **Create a New API**:
+    - Choose **REST API** and click on **Build**.
+    - Select **New API**, provide a name (e.g., "CarPricePredictionAPI"), and set the endpoint type to **Regional**.
+    - Click on **Create API**.
+
+### **Step 2: Create Resource and Method**
+
+1. **Create a Resource**:
+    - Under the newly created API, select **Create Resource**.
+    - Enter a resource name, **`predict`**, and ensure the **Enable API Gateway CORS** option is checked if necessary.
+    - Click on **Create Resource**.
+2. **Create a POST Method**:
+    - Select the new resource, click on **Create Method**,
+    - Select the method type as **POST**:
+        - For **Integration type**, select **Lambda Function**.
+        - Enable **Use Lambda Proxy integration**.
+        - Select your Lambda function, **`model-endpoint-v2`**.
+        - Click on **Create Method**.
+
+### **Step 3: Define and Enable Request Validation**
+
+1. **Create a Model for Input Validation**:
+    - Under **Models**, click **Create Model**.
+    - Name the model **`CarRequestModel`**, set **Content Type** to **`application/json`**, and define the schema based on your JSON structure as follows:
+
+        ```json
+        {
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "title": "Car Input",
+          "type": "object",
+          "properties": {
+            "body": {
+              "type": "string"
+            }
+          },
+          "required": ["body"]
+        }
+        ```
+
+    - Click **Create**.
+    - ![cloudwatch-alerts](./images/api-gateway-model.png)
+2. **Assign the Model to the POST Method**:
+    - Go to your POST method and select edit **Method Request**.
+    - Under **Method request settings > Request validator**, select **Validate Body**.
+    - Set the **Request Validator** to "Validate body...".
+    - Then under **Request body**, click **Add model**, set **Content Type** to **`application/json`** and select the created Model, **`CarRequestModel`**.
+    - Click on **Save**.
+    - ![cloudwatch-alerts](./images/api-gateway-post-method.png)
+
+### **Step 4: Deploy API and Configure Stage**
+
+1. **Deploy the API**:
+    - Click on **Deploy API**.
+    - Select a **New Stage** and then give a name, **`prod`**.
+    - Click on **Deploy**.
+2. **Note the Invoke URL** provided after deployment for later use.
+
+### **Step 5: Secure API with API Keys**
+
+1. **Create an API Key**:
+    - Go to **API Keys** from the left navigation menu.
+    - Click on **Create API Key**.
+    - Name the key and choose **Auto generate**, then save it.
+    - Note down the API Key for client use.
+2. **Require API Keys for the POST Method**:
+    - Go to your POST method and select edit **Method Request**.
+    - Under **Method request settings**, set **API Key Required** to "true".
+    - Click on **Save**.
+3. **Create a Usage Plan and Associate API Key**:
+    - Go to **Usage Plans** from the left navigation menu, click on **Create usage plan**.
+    - Name the plan and set throttling and quota as needed (20 requests per second, 10 requests and 100 requests per month).
+    - Click **Create usage plan**.
+    - Then go to the created usage plan and associate your API stage by clicking and selecting add stage.
+    - ![cloudwatch-alerts](./images/usage-plan-stage.png)
+    - Go to the **API Keys** tab in the plan, click on **Add API Key**, and select your created key to associate the API key with the usage plan.
+    - ![cloudwatch-alerts](./images/usage-plan-key.png)
+
+### **Step 6: Test Your API**
+
+- **Using cURL**:
+
+    ```bash
+    curl -X POST https://bnar8ox2ge.execute-api.ap-south-1.amazonaws.com/prod/predict \
+    -H "Content-Type: application/json" \
+    -H "x-api-key: bFZ7JTbTUMRgvIAY4BC45Dxb6wo61TD3sgIP5670" \
+    -d '{
+      "body": "{\"Kilometeres\": 323002, \"Doors\": 4, \"Automatic\": 1, \"HorsePower\": 110, \"MetallicCol\": 1, \"CC\": 1500, \"Wt\": 950, \"Age\": 2, \"Fuel_Type\": \"Diesel\"}"
+    }'
+    ```
+![cloudwatch-alerts](./images/api-gateway-testing-curl.png)
+
+### **Step 7: Monitor and Maintain**
+
+- Use **CloudWatch** for monitoring and logging API calls.
+- Regularly update and review API security settings and usage plans.
