@@ -2,11 +2,9 @@
 
 This repository contains the resources and source code for a machine learning assignment aimed at predicting car prices. The project leverages AWS services, including Lambda and API Gateway, and follows MLOps practices to automate and monitor all steps of machine learning system construction.
 
-# **Repository Structure**
+## **Repository Structure**
 
-```python
-pythonCopy code
-.
+```bash
 ├── README.md
 ├── data
 │   └── dataset.npz              # Raw and preprocessed data
@@ -26,28 +24,30 @@ pythonCopy code
 │   ├── scaler.pkl                  # Scaler object for numerical data normalization
 │   └── train.csv                   # Training dataset
 └── notebooks
-    └── development-notebook.ipynb  # Jupyter notebook containing EDA, data visualization, data preprocessing, and model development
+    └── development-notebook.ipynb  # Jupyter notebooks on Model Preparation for Deployment including EDA, data visualization, data preprocessing, and model code refinements
 
 ```
 
 ### **Directories and Files**
 
-- **`/data`**: Contains raw and preprocessed datasets used in model training.
-- **`/images`**: Includes images used within the README documentation to explain concepts or results.
-- **`/lambda-ct-pipeline`**: Holds the AWS Lambda function for continuous training of the machine learning model.
+- **`/notebooks`**: Jupyter notebooks on Model Preparation for Deployment including EDA, data visualization, data preprocessing, and model code refinements.
+- **`/model`**: Contains all trained machine learning models and their corresponding encoders, along with the training dataset.
+    - **`finalized_linear_model.pkl`**: The serialized final linear regression model ready for predictions.
+    - **`label_encoder.pkl`**, **`onehot_encoder.pkl`**, **`scaler.pkl`**: Serialization of preprocessing encoders.
+    - **`model.py`**: Initial model training python code provided.
 - **`/lambda-model-endpoint`**:
    - **`Dockerfile`**: Defines the Docker container used to deploy the Lambda function.
    - **`test.py`**: Unit test for the model endpoint Lambda function.
    - **`model_endpoint_lambda_function.py`**: Implements the Lambda function to serve the model predictions.
-- **`/model`**: Contains all machine learning models and their corresponding encoders, along with the training dataset.
-   - **`finalized_linear_model.pkl`**: The serialized final linear regression model ready for predictions.
-   - **`label_encoder.pkl`**, **`onehot_encoder.pkl`**, **`scaler.pkl`**: Serialization of preprocessing encoders.
-   - **`model.py`**: Initial model training python code provided by the instructor.
-- **`/notebooks`**: Jupyter notebook that documents the exploratory data analysis (EDA), data visualization, data preprocessing, model development with refinements.
+- **`/lambda-ct-pipeline`**: Holds the AWS Lambda function for continuous training of the machine learning model.
+- **`/data`**: Contains raw and preprocessed datasets used in model training.
+- **`/images`**: Includes images used within the README documentation to explain concepts or results.
 
-# Local Development Setup
 
-For this assignment, I set up the local development environment on a Mac M1 Pro using Miniconda. I followed these specific steps to ensure that all necessary Python packages and Jupyter functionalities were available:
+## Local Development Setup
+
+
+For this assignment, I set up the local development environment on a Mac M1 Pro using Miniconda. I carefully followed specific steps to ensure seamless reproducibility and maintainability. This approach guaranteed that all necessary Python packages and Jupyter functionalities were readily available:
 
 1. **Create a Conda Environment**:
 
@@ -97,7 +97,7 @@ For this assignment, I set up the local development environment on a Mac M1 Pro 
 
    This command starts the Jupyter Notebook server locally in web browser, from where we can create and manage your notebooks.
 
-## **Additional Requirements**
+### **Additional Requirements**
 
 1. **Docker Installation**:
     - Docker is installed to handle containerization, necessary for deploying functions and services.
@@ -117,6 +117,11 @@ For this assignment, I set up the local development environment on a Mac M1 Pro 
         ```
 
 # **Step 1: Model Preparation for Deployment**
+I initiated the project by performing extensive exploratory data analysis and data visualization. This critical first step allowed me to refine the provided Python scripts and prepare the linear regression model for deployment on AWS Lambda. This analysis helped me gain a complete understanding of the dataset and identify the necessary data preprocessing steps to enhance model performance.
+
+After completing the analysis, I implemented further data preprocessing tasks, such as normalization and encoding. I then moved on to train and evaluate the linear regression model. Once the training was complete, I serialized both the model and the encoders and uploaded them to AWS S3. This step ensures seamless integration and execution within the Lambda function.
+
+**`Notebook Reference and Location: For a detailed look at the code, documentation, and step-by-step execution outputs, please refer to the Jupyter notebook located at /notebooks/development-notebook.ipynb.`**
 
 ## **Exploratory Data Analysis (EDA)**
 
@@ -234,13 +239,51 @@ To evaluate the performance of the trained model, the following metrics are calc
 - **Mean Absolute Percentage Error (MAPE)**: Measures the accuracy as a percentage, and is commonly used to forecast error in predictive modeling.
 - **Root Mean Squared Error (RMSE)**: The square root of the mean of the squared errors; RMSE is a good measure of how accurately the model predicts the response.
 
+### **Saving the Encoders and Model (Training and Prediction Consistency)**
+
+To maintain consistency in data preprocessing between training and prediction phases, it is essential to serialize and save the encoders and model after training. This ensures that the exact preprocessing steps used during training are applied during prediction.
+
+**Serialization Process**:
+
+- **MinMaxScaler**, **LabelEncoder**, and **OneHotEncoder** are saved using Python’s **`pickle`** module, which serializes Python objects into binary format.
+- The linear regression **model** is also serialized post-training.
+
+### **Loading and Using Encoders for New Data**
+
+When making predictions with new data, the saved encoders and model are loaded back into the environment. This guarantees that the new data undergoes identical transformations as the training data, providing accurate and consistent predictions.
 
 
-# **Step 2: Deployment of AWS Lambda Function for Car Price Prediction**
+### **Uploading Serialized Files to AWS S3**
+
+For the AWS Lambda function to access the model and encoders, they are uploaded to an AWS S3 bucket. This provides a scalable and secure storage solution accessible by the Lambda function.
+
+**Upload Commands**:
+
+```bash
+# Upload the serialized model and encoders to S3
+aws s3 cp ../model/scaler.pkl s3://car-price-pred-mlops/scaler.pkl
+aws s3 cp ../model/label_encoder.pkl s3://car-price-pred-mlops/label_encoder.pkl
+aws s3 cp ../model/onehot_encoder.pkl s3://car-price-pred-mlops/onehot_encoder.pkl
+aws s3 cp ../model/finalized_linear_model.pkl s3://car-price-pred-mlops/finalized_linear_model.pkl
+```
+
+**Confirm Upload**:
+
+```bash
+# List files in the S3 bucket to confirm upload
+aws s3 ls s3://car-price-pred-mlops
+```
+![s3-bucket](./images/s3-bucket.png)
+
+By following these steps, the model and encoders are effectively serialized, stored, and made ready for deployment. The AWS Lambda function can retrieve these files from S3, ensuring that the model predictions are based on the same preprocessing logic as was used during model training.
+
+# **Step 2: Deployment on AWS Lambda**
 
 This section details the deployment process of an AWS Lambda function designed to predict car prices using a trained model stored on AWS S3. The function processes input data in JSON format, applies necessary preprocessing, and outputs the predicted selling price.
 
 ## **Architecture Overview**
+
+![Architecture Diagram](./images/architecture-diagram.png)
 
 - **AWS Lambda**: Hosts the Python-based prediction function.
 - **Amazon S3**: Stores serialized machine learning models and preprocessors.
@@ -253,34 +296,26 @@ This section details the deployment process of an AWS Lambda function designed t
 
 - **Authenticate Docker to AWS ECR**:
 
-    ```css
-    cssCopy code
+    ```bash
     aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 637423276370.dkr.ecr.ap-south-1.amazonaws.com
-    
     ```
 
 - **Create a Repository in AWS ECR**:
 
-    ```css
-    cssCopy code
+    ```bash
     aws ecr create-repository --repository-name lambda-function-repo --region ap-south-1
-    
     ```
 
 - **Build and Tag the Docker Image**:
 
-    ```jsx
-    javascriptCopy code
+    ```bash
     docker tag lambda-function-image:latest 637423276370.dkr.ecr.ap-south-1.amazonaws.com/lambda-function-repo:latest
-    
     ```
 
 - **Push the Docker Image to ECR**:
 
     ```bash
-    bashCopy code
     docker push 637423276370.dkr.ecr.ap-south-1.amazonaws.com/lambda-function-repo:latest
-    
     ```
 
 
@@ -288,8 +323,7 @@ This section details the deployment process of an AWS Lambda function designed t
 
 - **Create Lambda Function**:
 
-    ```lua
-    luaCopy code
+    ```bash
     aws lambda create-function --function-name model-endpoint-v2 \
         --package-type Image \
         --code ImageUri=637423276370.dkr.ecr.ap-south-1.amazonaws.com/lambda-function-repo:latest \
@@ -298,32 +332,27 @@ This section details the deployment process of an AWS Lambda function designed t
         --architectures arm64 \
         --timeout 120 \
         --memory-size 1024
-    
     ```
-
+![lambda-function-console](./images/lambda-function-console.png)
 
 ### **3. Test Lambda Function**
 
 - **Invoke the Lambda Function with Sample Data**:
 
     ```bash
-    bashCopy code
     aws lambda invoke \
         --function-name model-endpoint-v2 \
         --payload '{"body": "{\"Kilometeres\": 45000, \"Doors\": 2, \"Automatic\": 0, \"HorsePower\": 110, \"MetallicCol\": 1, \"CC\": 1500, \"Wt\": 950, \"Age\": 2, \"Fuel_Type\": \"Diesel\"}"}' \
         response.json
-    
     ```
-
+![lambda-function-console](./images/lambda-function-testing.png)
 
 ### **4. Configure Concurrency for Scalability**
 
 - **Set Reserved Concurrency**:
 
-    ```css
-    cssCopy code
+    ```bash
     aws lambda put-function-concurrency --function-name model-endpoint-v2 --reserved-concurrent-executions 100
-    
     ```
 
 
@@ -348,15 +377,13 @@ To effectively monitor and observe the AWS Lambda function's performance and beh
 
 AWS Lambda automatically monitors functions, reporting metrics through Amazon CloudWatch. We just have to ensure **logging is enabled in the Lambda function’s IAM role**. This role needs permission to write logs to CloudWatch. The necessary policy (**`AWSLambdaBasicExecutionRole`**) includes permissions for logs creation.
 
-![Untitled](https://prod-files-secure.s3.us-west-2.amazonaws.com/2f7830c3-173b-41cd-aa45-25fca7558acb/1c04c73e-74cf-4599-a6a6-36369b7187f1/Untitled.png)
+![model-endpoint-lambda-iam](./images/model-endpoint-lambda-iam.png)
 
-![Untitled](https://prod-files-secure.s3.us-west-2.amazonaws.com/2f7830c3-173b-41cd-aa45-25fca7558acb/d8b5a216-2123-4208-b5f7-fae373031882/Untitled.png)
+![model-endpoint-lambda-iam-2](./images/model-endpoint-lambda-iam-2.png)
 
 - The **`print`** statements in Lambda python function will direct these logs to CloudWatch under the **`/aws/lambda/model-endpoint-v2`** log group.
 
-![Untitled](https://prod-files-secure.s3.us-west-2.amazonaws.com/2f7830c3-173b-41cd-aa45-25fca7558acb/f849a7ac-b3e5-4407-a756-70ab86d7a5db/Untitled.png)
-
-![Untitled](https://prod-files-secure.s3.us-west-2.amazonaws.com/2f7830c3-173b-41cd-aa45-25fca7558acb/42a948c8-b161-4173-8209-96065ee0e0ba/Untitled.png)
+![cloudwatch-log-streams](./images/cloudwatch-log-streams.png)
 
 ### **2. Monitor Execution Time and Invocation Frequency**
 
@@ -365,8 +392,8 @@ AWS Lambda automatically monitors functions, reporting metrics through Amazon Cl
     - **`Invocations`**: Counts each time a function is invoked in response to an event or invocation API call.
 
 These metrics are found in the CloudWatch console under the **Metrics** section.
+![cloud-watch-metrics](./images/cloud-watch-metrics.png)
 
-![Untitled](https://prod-files-secure.s3.us-west-2.amazonaws.com/2f7830c3-173b-41cd-aa45-25fca7558acb/4dc54515-1733-417c-a018-0b7e48e68e21/Untitled.png)
 
 ### **3. Monitor Model Inference Errors**
 
@@ -408,3 +435,108 @@ These metrics are found in the CloudWatch console under the **Metrics** section.
     - Go to the CloudWatch console → Alarms → Create alarm.
     - Select the metric (e.g., **`Duration`**, **`Errors`**), specify the threshold (e.g., Duration > 3000 ms), and set the period over which this is measured.
     - Configure actions to notify you via SNS (Simple Notification Service) when the alarm state is triggered.
+
+![cloudwatch-alerts](./images/cloudwatch-alerts.png)
+
+# **Step 3: API Gateway and Security**
+
+In this step, I have set up the AWS API Gateway to accept JSON data, pass it to my AWS Lambda function for predictions, return the prediction results as JSON in the API response, and secure it using API keys. Below, I have documented the manual configuration steps step by step.
+
+### **Step 1: Create API Gateway**
+
+1. **Log into the AWS Management Console** and navigate to the **API Gateway service**.
+2. **Create a New API**:
+    - Choose **REST API** and click on **Build**.
+    - Select **New API**, provide a name (e.g., "CarPricePredictionAPI"), and set the endpoint type to **Regional**.
+    - Click on **Create API**.
+
+### **Step 2: Create Resource and Method**
+
+1. **Create a Resource**:
+    - Under the newly created API, select **Create Resource**.
+    - Enter a resource name, **`predict`**, and ensure the **Enable API Gateway CORS** option is checked if necessary.
+    - Click on **Create Resource**.
+2. **Create a POST Method**:
+    - Select the new resource, click on **Create Method**,
+    - Select the method type as **POST**:
+        - For **Integration type**, select **Lambda Function**.
+        - Enable **Use Lambda Proxy integration**.
+        - Select your Lambda function, **`model-endpoint-v2`**.
+        - Click on **Create Method**.
+
+### **Step 3: Define and Enable Request Validation**
+
+1. **Create a Model for Input Validation**:
+    - Under **Models**, click **Create Model**.
+    - Name the model **`CarRequestModel`**, set **Content Type** to **`application/json`**, and define the schema based on your JSON structure as follows:
+
+        ```json
+        {
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "title": "Car Input",
+          "type": "object",
+          "properties": {
+            "body": {
+              "type": "string"
+            }
+          },
+          "required": ["body"]
+        }
+        ```
+
+    - Click **Create**.
+    - ![cloudwatch-alerts](./images/api-gateway-model.png)
+2. **Assign the Model to the POST Method**:
+    - Go to your POST method and select edit **Method Request**.
+    - Under **Method request settings > Request validator**, select **Validate Body**.
+    - Set the **Request Validator** to "Validate body...".
+    - Then under **Request body**, click **Add model**, set **Content Type** to **`application/json`** and select the created Model, **`CarRequestModel`**.
+    - Click on **Save**.
+    - ![cloudwatch-alerts](./images/api-gateway-post-method.png)
+
+### **Step 4: Deploy API and Configure Stage**
+
+1. **Deploy the API**:
+    - Click on **Deploy API**.
+    - Select a **New Stage** and then give a name, **`prod`**.
+    - Click on **Deploy**.
+2. **Note the Invoke URL** provided after deployment for later use.
+
+### **Step 5: Secure API with API Keys**
+
+1. **Create an API Key**:
+    - Go to **API Keys** from the left navigation menu.
+    - Click on **Create API Key**.
+    - Name the key and choose **Auto generate**, then save it.
+    - Note down the API Key for client use.
+2. **Require API Keys for the POST Method**:
+    - Go to your POST method and select edit **Method Request**.
+    - Under **Method request settings**, set **API Key Required** to "true".
+    - Click on **Save**.
+3. **Create a Usage Plan and Associate API Key**:
+    - Go to **Usage Plans** from the left navigation menu, click on **Create usage plan**.
+    - Name the plan and set throttling and quota as needed (20 requests per second, 10 requests and 100 requests per month).
+    - Click **Create usage plan**.
+    - Then go to the created usage plan and associate your API stage by clicking and selecting add stage.
+    - ![cloudwatch-alerts](./images/usage-plan-stage.png)
+    - Go to the **API Keys** tab in the plan, click on **Add API Key**, and select your created key to associate the API key with the usage plan.
+    - ![cloudwatch-alerts](./images/usage-plan-key.png)
+
+### **Step 6: Test Your API**
+
+- **Using cURL**:
+
+    ```bash
+    curl -X POST https://bnar8ox2ge.execute-api.ap-south-1.amazonaws.com/prod/predict \
+    -H "Content-Type: application/json" \
+    -H "x-api-key: bFZ7JTbTUMRgvIAY4BC45Dxb6wo61TD3sgIP5670" \
+    -d '{
+      "body": "{\"Kilometeres\": 323002, \"Doors\": 4, \"Automatic\": 1, \"HorsePower\": 110, \"MetallicCol\": 1, \"CC\": 1500, \"Wt\": 950, \"Age\": 2, \"Fuel_Type\": \"Diesel\"}"
+    }'
+    ```
+![cloudwatch-alerts](./images/api-gateway-testing-curl.png)
+
+### **Step 7: Monitor and Maintain**
+
+- Use **CloudWatch** for monitoring and logging API calls.
+- Regularly update and review API security settings and usage plans.
