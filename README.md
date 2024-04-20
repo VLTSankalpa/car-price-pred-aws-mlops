@@ -24,28 +24,30 @@ This repository contains the resources and source code for a machine learning as
 │   ├── scaler.pkl                  # Scaler object for numerical data normalization
 │   └── train.csv                   # Training dataset
 └── notebooks
-    └── development-notebook.ipynb  # Jupyter notebook containing EDA, data visualization, data preprocessing, and model development
+    └── development-notebook.ipynb  # Jupyter notebooks on Model Preparation for Deployment including EDA, data visualization, data preprocessing, and model code refinements
 
 ```
 
 ### **Directories and Files**
 
-- **`/data`**: Contains raw and preprocessed datasets used in model training.
-- **`/images`**: Includes images used within the README documentation to explain concepts or results.
-- **`/lambda-ct-pipeline`**: Holds the AWS Lambda function for continuous training of the machine learning model.
+- **`/notebooks`**: Jupyter notebooks on Model Preparation for Deployment including EDA, data visualization, data preprocessing, and model code refinements.
+- **`/model`**: Contains all trained machine learning models and their corresponding encoders, along with the training dataset.
+    - **`finalized_linear_model.pkl`**: The serialized final linear regression model ready for predictions.
+    - **`label_encoder.pkl`**, **`onehot_encoder.pkl`**, **`scaler.pkl`**: Serialization of preprocessing encoders.
+    - **`model.py`**: Initial model training python code provided.
 - **`/lambda-model-endpoint`**:
    - **`Dockerfile`**: Defines the Docker container used to deploy the Lambda function.
    - **`test.py`**: Unit test for the model endpoint Lambda function.
    - **`model_endpoint_lambda_function.py`**: Implements the Lambda function to serve the model predictions.
-- **`/model`**: Contains all machine learning models and their corresponding encoders, along with the training dataset.
-   - **`finalized_linear_model.pkl`**: The serialized final linear regression model ready for predictions.
-   - **`label_encoder.pkl`**, **`onehot_encoder.pkl`**, **`scaler.pkl`**: Serialization of preprocessing encoders.
-   - **`model.py`**: Initial model training python code provided by the instructor.
-- **`/notebooks`**: Jupyter notebook that documents the exploratory data analysis (EDA), data visualization, data preprocessing, model development with refinements.
+- **`/lambda-ct-pipeline`**: Holds the AWS Lambda function for continuous training of the machine learning model.
+- **`/data`**: Contains raw and preprocessed datasets used in model training.
+- **`/images`**: Includes images used within the README documentation to explain concepts or results.
+
 
 ## Local Development Setup
 
-For this assignment, I set up the local development environment on a Mac M1 Pro using Miniconda. I followed these specific steps to ensure that all necessary Python packages and Jupyter functionalities were available:
+
+For this assignment, I set up the local development environment on a Mac M1 Pro using Miniconda. I carefully followed specific steps to ensure seamless reproducibility and maintainability. This approach guaranteed that all necessary Python packages and Jupyter functionalities were readily available:
 
 1. **Create a Conda Environment**:
 
@@ -115,6 +117,11 @@ For this assignment, I set up the local development environment on a Mac M1 Pro 
         ```
 
 # **Step 1: Model Preparation for Deployment**
+I initiated the project by performing extensive exploratory data analysis and data visualization. This critical first step allowed me to refine the provided Python scripts and prepare the linear regression model for deployment on AWS Lambda. This analysis helped me gain a complete understanding of the dataset and identify the necessary data preprocessing steps to enhance model performance.
+
+After completing the analysis, I implemented further data preprocessing tasks, such as normalization and encoding. I then moved on to train and evaluate the linear regression model. Once the training was complete, I serialized both the model and the encoders and uploaded them to AWS S3. This step ensures seamless integration and execution within the Lambda function.
+
+**`Notebook Reference and Location: For a detailed look at the code, documentation, and step-by-step execution outputs, please refer to the Jupyter notebook located at /notebooks/development-notebook.ipynb.`**
 
 ## **Exploratory Data Analysis (EDA)**
 
@@ -232,13 +239,51 @@ To evaluate the performance of the trained model, the following metrics are calc
 - **Mean Absolute Percentage Error (MAPE)**: Measures the accuracy as a percentage, and is commonly used to forecast error in predictive modeling.
 - **Root Mean Squared Error (RMSE)**: The square root of the mean of the squared errors; RMSE is a good measure of how accurately the model predicts the response.
 
+### **Saving the Encoders and Model (Training and Prediction Consistency)**
 
+To maintain consistency in data preprocessing between training and prediction phases, it is essential to serialize and save the encoders and model after training. This ensures that the exact preprocessing steps used during training are applied during prediction.
+
+**Serialization Process**:
+
+- **MinMaxScaler**, **LabelEncoder**, and **OneHotEncoder** are saved using Python’s **`pickle`** module, which serializes Python objects into binary format.
+- The linear regression **model** is also serialized post-training.
+
+### **Loading and Using Encoders for New Data**
+
+When making predictions with new data, the saved encoders and model are loaded back into the environment. This guarantees that the new data undergoes identical transformations as the training data, providing accurate and consistent predictions.
+
+
+### **Uploading Serialized Files to AWS S3**
+
+For the AWS Lambda function to access the model and encoders, they are uploaded to an AWS S3 bucket. This provides a scalable and secure storage solution accessible by the Lambda function.
+
+**Upload Commands**:
+
+```bash
+# Upload the serialized model and encoders to S3
+aws s3 cp ../model/scaler.pkl s3://car-price-pred-mlops/scaler.pkl
+aws s3 cp ../model/label_encoder.pkl s3://car-price-pred-mlops/label_encoder.pkl
+aws s3 cp ../model/onehot_encoder.pkl s3://car-price-pred-mlops/onehot_encoder.pkl
+aws s3 cp ../model/finalized_linear_model.pkl s3://car-price-pred-mlops/finalized_linear_model.pkl
+```
+
+**Confirm Upload**:
+
+```bash
+# List files in the S3 bucket to confirm upload
+aws s3 ls s3://car-price-pred-mlops
+```
+![s3-bucket](./images/s3-bucket.png)
+
+By following these steps, the model and encoders are effectively serialized, stored, and made ready for deployment. The AWS Lambda function can retrieve these files from S3, ensuring that the model predictions are based on the same preprocessing logic as was used during model training.
 
 # **Step 2: Deployment on AWS Lambda**
 
 This section details the deployment process of an AWS Lambda function designed to predict car prices using a trained model stored on AWS S3. The function processes input data in JSON format, applies necessary preprocessing, and outputs the predicted selling price.
 
 ## **Architecture Overview**
+
+![Architecture Diagram](./images/architecture-diagram.png)
 
 - **AWS Lambda**: Hosts the Python-based prediction function.
 - **Amazon S3**: Stores serialized machine learning models and preprocessors.
@@ -334,15 +379,11 @@ AWS Lambda automatically monitors functions, reporting metrics through Amazon Cl
 
 ![model-endpoint-lambda-iam](./images/model-endpoint-lambda-iam.png)
 
-![Untitled](./images/model-endpoint-lambda-iam-2.png)
+![model-endpoint-lambda-iam-2](./images/model-endpoint-lambda-iam-2.png)
 
 - The **`print`** statements in Lambda python function will direct these logs to CloudWatch under the **`/aws/lambda/model-endpoint-v2`** log group.
 
-![Untitled](./images/cloudwatch-log-streams.png)
-
-
-![Untitled](./images/cloud-watch-metrics.png)
-
+![cloudwatch-log-streams](./images/cloudwatch-log-streams.png)
 
 ### **2. Monitor Execution Time and Invocation Frequency**
 
@@ -351,7 +392,7 @@ AWS Lambda automatically monitors functions, reporting metrics through Amazon Cl
     - **`Invocations`**: Counts each time a function is invoked in response to an event or invocation API call.
 
 These metrics are found in the CloudWatch console under the **Metrics** section.
-
+![cloud-watch-metrics](./images/cloud-watch-metrics.png)
 
 
 ### **3. Monitor Model Inference Errors**
@@ -395,4 +436,4 @@ These metrics are found in the CloudWatch console under the **Metrics** section.
     - Select the metric (e.g., **`Duration`**, **`Errors`**), specify the threshold (e.g., Duration > 3000 ms), and set the period over which this is measured.
     - Configure actions to notify you via SNS (Simple Notification Service) when the alarm state is triggered.
 
-![Untitled](./images/cloudwatch-alerts.png)
+![cloudwatch-alerts](./images/cloudwatch-alerts.png)
